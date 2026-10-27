@@ -26,6 +26,56 @@ class TransactionRepository:
                 data = json.loads(line) #JSON 문자열을 Python 딕셔너리로 변환
                 yield Transaction(**data) #**는 딕셔너리의 키와 값을 함수의 키워드 인자로 풀어줌
 
+    def delete(self, tx_id: str) -> bool:
+        if not self.path.exists():
+            return False
+
+        temp_path = self.path.with_suffix(".jsonl.tmp")
+        found = False
+
+        with open(self.path, "r", encoding="utf-8") as src:
+            with open(temp_path, "w", encoding="utf-8") as dest:
+                for line in src:
+                    data = json.loads(line)
+
+                    if data["id"] == tx_id: # id가 일치하면 임시파일에 저장 X
+                        found = True
+                        continue
+
+                    dest.write(line)
+
+        if not found:
+            temp_path.unlink() #삭제할 id를 못찾았으면 임시파일 제거
+            return False
+
+        os.replace(temp_path, self.path)
+        return True
+
+    def update(self, tx_id: str, changes: dict) -> bool:
+        if not self.path.exists():
+            return False
+
+        temp_path = self.path.with_suffix(".jsonl.tmp")
+        found = False
+
+        with open(self.path, "r", encoding="utf-8") as src:
+            with open(temp_path, "w", encoding="utf-8") as dest:
+                for line in src:
+                    data = json.loads(line)
+
+                    if data["id"] == tx_id:
+                        data.update(changes)
+                        found = True
+
+                    dest.write(json.dumps(data, ensure_ascii=False) + "\n")
+
+        if not found:
+            temp_path.unlink()
+            return False
+
+        os.replace(temp_path, self.path)
+        return True
+    
 class BudgetStore:
     def __init__(self, data_dir: str = "data"):
         self.path = Path(data_dir) / "budgets.jsonl"

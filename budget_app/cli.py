@@ -2,12 +2,11 @@ import argparse
 from heapq import nlargest
 from uuid import uuid4
 
-from .service import search_transactions
 from .models import Transaction
-from .repository import TransactionRepository
 from .service import search_transactions, summarize_month
-from .repository import TransactionRepository, BudgetStore
 from .repository import TransactionRepository, BudgetStore, CategoryStore
+from .csv_io import export_transactions, import_transactions
+from .validators import validate_date, validate_type, validate_amount
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="콘솔 가계부")
@@ -60,13 +59,67 @@ def main() -> int:
     category_subparsers.add_parser("add", help="카테고리 추가")
     category_subparsers.add_parser("list", help="카테고리 목록")
     category_subparsers.add_parser("remove", help="카테고리 삭제")
+
+    delete_parser = subparsers.add_parser(
+        "delete", help="거래 삭제"
+    )
+    delete_parser.add_argument("--id", required=True)
+
+    update_parser = subparsers.add_parser(
+    "update", help="거래 수정"
+    )
+
+    update_parser.add_argument("--id", required=True)
+    update_parser.add_argument("--date")
+    update_parser.add_argument("--type", dest="tx_type")
+    update_parser.add_argument("--category")
+    update_parser.add_argument("--amount", type=int)
+    update_parser.add_argument("--memo")
+    update_parser.add_argument("--tags")
+
+    export_parser = subparsers.add_parser(
+        "export", help="CSV 내보내기"
+    )
+
+    export_parser.add_argument("--out", required=True)
+    export_parser.add_argument("--month")
+    export_parser.add_argument("--from", dest="date_from")
+    export_parser.add_argument("--to", dest="date_to")
+
+    import_parser = subparsers.add_parser(
+    "import", help="CSV 가져오기"
+    )
+
+    import_parser.add_argument(
+        "--from", dest="input_file", required=True
+    )
+
+
     args = parser.parse_args()
 
     if args.command == "add":
         date = input("날짜(YYYY-MM-DD): ")
         tx_type = input("타입(income/expense): ")
-        category = input("카테고리: ")
-        amount = int(input("금액: "))
+        category = input("카테고리: ").strip()
+
+        category_store = CategoryStore()
+
+        if category not in set(category_store.load()):
+            print("[오류] 등록되지 않은 카테고리입니다.")
+            print("[힌트] category add 명령어로 먼저 등록하세요.")
+            return 1
+
+        try:
+            validate_date(date)
+            validate_type(tx_type)
+
+            amount = int(input("금액: "))
+            validate_amount(amount)
+
+        except ValueError as e:
+            print(f"[오류] {e}")
+            print("[힌트] 날짜, 타입, 금액을 확인하세요.")
+            return 1
         memo = input("메모(선택): ")
         tags = [
             tag.strip()
@@ -142,7 +195,6 @@ def main() -> int:
 
         if count == 0:
             print("데이터 없음")
-            return 0
 
         print(f"\n{args.month} 월별 요약")
         print(f"총 수입: {income}원")
@@ -166,12 +218,15 @@ def main() -> int:
             reverse=True
         )[:args.top]
 
-        print(f"\n지출 TOP {args.top}")
+        if not top_categories:
+            print("\n지출 내역 없음")
+        else:
+            print(f"\n지출 TOP {args.top}")
 
-        for i, (category, amount) in enumerate(
-            top_categories, start=1
-        ):
-            print(f"{i}. {category}: {amount}원")
+            for i, (category, amount) in enumerate(
+                top_categories, start=1
+            ):
+                print(f"{i}. {category}: {amount}원")
     elif args.command == "budget":
         if args.budget_command == "set":
             if args.amount <= 0:
@@ -212,5 +267,111 @@ def main() -> int:
             else:
                 print("[오류] 존재하지 않는 카테고리입니다.")
                 return 1
+    elif args.command == "delete":
+        repo = TransactionRepository()
 
+        if repo.delete(args.id):
+            print(f"[삭제 완료] id={args.id}")
+        else:
+            print(f"[오류] 존재하지 않는 거래입니다. id={args.id}")
+            return 1
+
+    elif args.command == "update":
+        repo = TransactionRepository()
+
+        changes = {}
+
+        if args.date is not None:
+            try:
+                validate_date(args.date)
+            except ValueError as e:
+                print(f"[오류] {e}")
+                return 1
+
+            changes["date"] = args.date
+
+        if args.tx_type is not None:
+            try:
+                validate_type(args.tx_type)
+            except ValueError as e:
+                print(f"[오류] {e}")
+                return 1
+
+            changes["type"] = args.tx_type
+
+        if args.category is not None:
+            if args.category not in set(CategoryStore().load()):
+                print("[오류] 등록되지 않은 카테고리입니다.")
+                return 1
+            changes["category"] = args.category
+
+        if args.amount is not None:
+            if args.amount <= 0:
+                print("[오류] 금액은 0보다 커야 합니다.")
+                return 1
+            changes["amount"] = args.amount
+
+        if args.memo is not None:
+            changes["memo"] = args.memo
+
+        if args.tags is not None:
+            changes["tags"] = [
+                tag.strip()
+                for tag in args.tags.split(",")
+                if tag.strip()
+            ]
+
+        if not changes:
+            print("[오류] 수정할 항목이 없습니다.")
+            return 1
+
+        if repo.update(args.id, changes):
+            print(f"[수정 완료] id={args.id}")
+        else:
+            print(f"[오류] 존재하지 않는 거래입니다. id={args.id}")
+            return 1
+
+    elif args.command == "export":
+        if not args.month and not (args.date_from and args.date_to):
+            print("[오류] --month 또는 --from과 --to를 지정하세요.")
+            return 1
+
+        if bool(args.date_from) != bool(args.date_to):
+            print("[오류] --from과 --to는 함께 지정해야 합니다.")
+            return 1
+
+        if args.date_from and args.date_from > args.date_to:
+            print("[오류] 시작 날짜가 종료 날짜보다 늦습니다.")
+            return 1
+
+        repo = TransactionRepository()
+
+        count = export_transactions(
+            repo,
+            out_file=args.out,
+            month=args.month,
+            date_from=args.date_from,
+            date_to=args.date_to
+        )
+
+        print(f"[완료] {args.out} ({count} records)")
+    elif args.command == "import":
+        repo = TransactionRepository()
+        category_store = CategoryStore()
+
+        categories = set(category_store.load())
+
+        try:
+            imported, skipped = import_transactions(
+                repo,
+                csv_file=args.input_file,
+                categories=categories
+            )
+
+        except (OSError, ValueError) as e:
+            print(f"[오류] CSV 가져오기 실패: {e}")
+            print("[힌트] 파일 경로와 CSV 헤더를 확인하세요.")
+            return 1
+
+        print(f"[완료] imported={imported}, skipped={skipped}")
     return 0
