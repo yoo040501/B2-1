@@ -4,8 +4,9 @@ from heapq import nlargest
 from ..repository import TransactionRepository, BudgetStore
 from ..service import search_transactions, summarize_month
 from ..validators import validate_date_range, validate_month
+from ..decorators import time_action
 
-
+@time_action
 def handle_search(args: Namespace) -> int:
     validate_date_range(args.date_from, args.date_to)
 
@@ -37,7 +38,7 @@ def handle_search(args: Namespace) -> int:
 
     return 0
 
-
+@time_action
 def handle_summary(args: Namespace) -> int:
     validate_month(args.month)
 

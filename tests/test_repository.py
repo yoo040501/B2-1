@@ -62,3 +62,30 @@ class TestTransactionRepository(unittest.TestCase):
         result = self.repo.delete("TX-999")
 
         self.assertFalse(result)
+
+def test_save_many_atomic_rollback(self):
+    # 기존 거래 저장
+    self.repo.save(self.tx)
+
+    # 첫 번째 거래를 전달한 다음 오류 발생
+    def faulty_transactions():
+        yield Transaction(
+            id="TX-002",
+            date="2026-10-27",
+            type="expense",
+            category="food",
+            amount=20000
+        )
+
+        raise RuntimeError("의도적인 저장 오류")
+
+    # 오류 발생 확인
+    with self.assertRaises(RuntimeError):
+        self.repo.save_many_atomic(faulty_transactions())
+
+    # 기존 거래는 그대로, 새 거래는 저장되지 않아야 함
+    transactions = list(self.repo.load())
+
+    self.assertEqual(len(transactions), 1)
+    self.assertEqual(transactions[0].id, "TX-001")
+    self.assertEqual(transactions[0].amount, 15000)

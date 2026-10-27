@@ -1,6 +1,24 @@
-from functools import wraps
 import sys
 import json
+from functools import wraps
+from time import perf_counter
+
+def time_action(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = perf_counter()
+
+        try:
+            return func(*args, **kwargs)
+        finally:
+            elapsed = perf_counter() - start
+
+            print(
+                f"[TIME] {func.__name__}: {elapsed:.4f}s",
+                file=sys.stderr
+            )
+
+    return wrapper
 
 def log_action(func):
     @wraps(func) # 원본 함수의 이름과 문서 정보 등을 유지

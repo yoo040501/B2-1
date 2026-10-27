@@ -2,7 +2,6 @@ import csv
 from pathlib import Path
 
 from .repository import TransactionRepository
-from uuid import uuid4
 from datetime import date
 
 from .models import Transaction
@@ -58,63 +57,68 @@ def import_transactions(
     categories: set[str]
 ) -> tuple[int, int]:
 
-    imported = 0
     skipped = 0
 
     with open(csv_file, "r", encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f) #CSV 파일을 한 줄씩 읽어서 딕셔너리로 변환
+        reader = csv.DictReader(f, strict=True) #CSV 파일을 한 줄씩 읽어서 딕셔너리로 변환
 
         required = {"date", "type", "category", "amount"}
 
         if not required.issubset(reader.fieldnames or []): #CSV 헤더에 필수 컬럼이 모두 있는지 확인하는 코드
             raise ValueError("CSV 필수 컬럼이 누락되었습니다.")
 
-        for row in reader:
-            try:
-                tx_date = (row["date"] or "").strip()
-                tx_type = (row["type"] or "").strip()
-                category = (row["category"] or "").strip()
-                amount = int(row["amount"])
+        # 최대 ID를 한 번만 조회
+        next_number = int(repo.next_id().removeprefix("TX-"))
+        def valid_transactions():
+            nonlocal skipped, next_number
 
-                # 입력값 검증
-                parsed_date = date.fromisoformat(tx_date) 
+            for row in reader:
+                try:
+                    tx_date = (row["date"] or "").strip()
+                    tx_type = (row["type"] or "").strip()
+                    category = (row["category"] or "").strip()
+                    amount = int(row["amount"])
 
-                if parsed_date.isoformat() != tx_date:
-                    raise ValueError("날짜 형식 오류")
+                    parsed_date = date.fromisoformat(tx_date)
 
-                if tx_type not in ("income", "expense"):
-                    raise ValueError("잘못된 거래 타입")
+                    if parsed_date.isoformat() != tx_date:
+                        raise ValueError("날짜 형식 오류")
 
-                if amount <= 0:
-                    raise ValueError("금액은 양수여야 합니다.")
+                    if tx_type not in ("income", "expense"):
+                        raise ValueError("잘못된 거래 타입")
 
-                if category not in categories:
-                    raise ValueError("등록되지 않은 카테고리")
+                    if amount <= 0:
+                        raise ValueError("금액은 양수여야 합니다.")
 
-                memo = row.get("memo") or ""
-                tag_text = row.get("tags") or ""
+                    if category not in categories:
+                        raise ValueError("등록되지 않은 카테고리")
 
-                tags = [
-                    tag.strip()
-                    for tag in tag_text.split(",")
-                    if tag.strip()
-                ]
+                    memo = row.get("memo") or ""
+                    tag_text = row.get("tags") or ""
 
-                tx = Transaction(
-                    id=repo.next_id(),
-                    date=tx_date,
-                    type=tx_type,
-                    category=category,
-                    amount=amount,
-                    memo=memo,
-                    tags=tags
-                )
+                    tags = [
+                        tag.strip()
+                        for tag in tag_text.split(",")
+                        if tag.strip()
+                    ]
 
-            except (ValueError, TypeError, AttributeError):
-                skipped += 1
-                continue
+                    tx = Transaction(
+                        id=f"TX-{next_number:03d}",
+                        date=tx_date,
+                        type=tx_type,
+                        category=category,
+                        amount=amount,
+                        memo=memo,
+                        tags=tags
+                    )
 
-            repo.save(tx)
-            imported += 1
+                except (ValueError, TypeError, AttributeError):
+                    skipped += 1
+                    continue
+
+                next_number += 1
+                yield tx
+
+        imported = repo.save_many_atomic(valid_transactions())
 
     return imported, skipped

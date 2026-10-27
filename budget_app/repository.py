@@ -102,6 +102,25 @@ class TransactionRepository:
                 last_id = max(last_id, int(number))
 
         return f"TX-{last_id + 1:03d}"
+
+    def save_many_atomic(self, transactions: Generator[Transaction]) -> int:
+        count = 0
+
+        with atomic_write(self.path) as dest:
+            # 기존 거래 복사
+            for tx in self.load():
+                dest.write(
+                    json.dumps(asdict(tx), ensure_ascii=False) + "\n"
+                )
+
+            # 새 거래를 임시 파일에 추가
+            for tx in transactions:
+                dest.write(
+                    json.dumps(asdict(tx), ensure_ascii=False) + "\n"
+                )
+                count += 1
+
+        return count
     
 class BudgetStore:
     def __init__(self, data_dir: str = "data"):
