@@ -101,7 +101,7 @@ def import_transactions(
                 ]
 
                 tx = Transaction(
-                    id=f"TX-{uuid4().hex}",
+                    id=repo.next_id(),
                     date=tx_date,
                     type=tx_type,
                     category=category,

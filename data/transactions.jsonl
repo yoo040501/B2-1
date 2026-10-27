@@ -1,4 +1,8 @@
-{"id": "TX-001", "date": "2026-10-23", "type": "expense", "category": "food", "amount": 20000, "memo": "점심", "tags": ["food", "meal"]}
 {"id": "TX-951fbd669e30452f8b2b73b9ac2fb046", "date": "213132", "type": "31231", "category": "food", "amount": 1222, "memo": "", "tags": [""]}
 {"id": "TX-84304f0eb007450798f50e65ccfa1a7c", "date": "2026-10-25", "type": "expense", "category": "food", "amount": 12000, "memo": "점심", "tags": ["meal"]}
 {"id": "TX-3547e49df5a4467d81a593f5544199fe", "date": "2026-10-26", "type": "expense", "category": "food", "amount": 18000, "memo": "저녁", "tags": ["food", "dinner"]}
+{"id": "TX-616c1db0f2f3419b8a9eebaaf3a2d020", "date": "2026-10-27", "type": "income", "category": "food", "amount": 123123, "memo": "", "tags": []}
+{"id": "TX-001", "date": "2026-10-27", "type": "income", "category": "food", "amount": 3123132, "memo": "", "tags": []}
+{"id": "TX-003", "date": "2026-10-27", "type": "expense", "category": "food", "amount": 45235, "memo": "", "tags": []}
+{"id": "TX-004", "date": "2026-10-27", "type": "income", "category": "food", "amount": 30000, "memo": "", "tags": []}
+{"id": "TX-005", "date": "2026-10-27", "type": "income", "category": "food", "amount": 123, "memo": "", "tags": []}

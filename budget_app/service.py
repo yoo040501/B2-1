@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 
 from .models import Transaction
-from .repository import TransactionRepository
+from .repository import TransactionRepository, CategoryStore
 
 
 def search_transactions(
@@ -61,3 +61,19 @@ def summarize_month(
             category_totals[tx.category] += tx.amount
 
     return income, expense, dict(category_totals), count
+
+def restore_categories(
+    repo: TransactionRepository,
+    store: CategoryStore
+) -> list[str]:
+
+    registered = set(store.load()) #등록된 카테고리를 집합으로 만듦
+    restored = []
+
+    for tx in repo.load():
+        if tx.category and tx.category not in registered: #거래가 사용하는 카테고리가 등록되어 있는지 검사
+            if store.add(tx.category):
+                registered.add(tx.category)
+                restored.append(tx.category)
+
+    return restored
