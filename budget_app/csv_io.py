@@ -1,9 +1,8 @@
 import csv
 from pathlib import Path
 
-from .repository import TransactionRepository
-from datetime import date
-
+from .validators import validate_date, validate_type, validate_amount
+from .repository import TransactionRepository, atomic_write
 from .models import Transaction
 
 def export_transactions(
@@ -14,18 +13,35 @@ def export_transactions(
     date_to: str | None = None
 ) -> int:
 
-    path = Path(out_file)
+    path = Path(out_file).resolve()
+
+	# 현재 사용하는 데이터 저장 파일 3개
+    protected_paths = {
+        (repo.path.parent / name).resolve()
+        for name in (
+            "transactions.jsonl",
+            "categories.jsonl",
+            "budgets.jsonl",
+        )
+    }
+
+    if path in protected_paths:
+        raise ValueError(
+            "데이터 저장 파일에는 내보낼 수 없습니다. "
+            "export.csv처럼 다른 파일을 지정하세요."
+        )
+
     count = 0
 
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(            # 딕셔너리를 csv파일에 기록하는 기능
+  # 임시 파일에 작성하고, 모두 성공하면 최종 파일로 교체
+    with atomic_write(path) as f:
+        writer = csv.DictWriter(  # 딕셔너리를 csv파일에 기록하는 기능
             f,
             fieldnames=[
                 "date", "type", "category",
                 "amount", "memo", "tags"
             ]
         )
-
         writer.writeheader() #첫번째 줄에 칼럼 이름 기록
 
         for tx in repo.load():
@@ -79,17 +95,10 @@ def import_transactions(
                     category = (row["category"] or "").strip()
                     amount = int(row["amount"])
 
-                    parsed_date = date.fromisoformat(tx_date)
-
-                    if parsed_date.isoformat() != tx_date:
-                        raise ValueError("날짜 형식 오류")
-
-                    if tx_type not in ("income", "expense"):
-                        raise ValueError("잘못된 거래 타입")
-
-                    if amount <= 0:
-                        raise ValueError("금액은 양수여야 합니다.")
-
+                    validate_date(tx_date)
+                    validate_type(tx_type)
+                    validate_amount(amount)
+                    
                     if category not in categories:
                         raise ValueError("등록되지 않은 카테고리")
 

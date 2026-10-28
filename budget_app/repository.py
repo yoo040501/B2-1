@@ -38,6 +38,7 @@ def atomic_write(path: Path) -> Generator[TextIO]:
             mode="w", #쓰기 모드
             encoding="utf-8", 
             dir=path.parent, #원본과 같은 폴더에 생성
+			newline="",          # 추가: CSV 줄바꿈 처리
             prefix=f".{path.name}.",
             suffix=".tmp", #임시 파일확장자 .tmp
             delete=False #파일을 닫아도 자동 삭제 X
@@ -56,6 +57,7 @@ class TransactionRepository:
     def __init__(self, data_dir: str = "data"):
         self.path = Path(data_dir) / "transactions.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.touch(exist_ok=True)
 
     @log_action
     def save(self, tx: Transaction) -> None:
@@ -67,7 +69,15 @@ class TransactionRepository:
 
     def load(self) -> Generator[Transaction]:
         for data in read_jsonl(self.path):
-            yield Transaction(**data)  #**는 딕셔너리의 키와 값을 함수의 키워드 인자로 풀어줌
+            try:
+                tx = Transaction(**data)  #**는 딕셔너리의 키와 값을 함수의 키워드 인자로 풀어줌
+            except TypeError as e:
+                raise ValueError(
+                    f"{self.path}: 거래 항목이 누락되었거나 잘못됐습니다. "
+                    "저장 파일을 확인하세요."
+                ) from e
+
+            yield tx
 
     @log_action
     def delete(self, tx_id: str) -> bool:
@@ -109,15 +119,11 @@ class TransactionRepository:
         with atomic_write(self.path) as dest:
             # 기존 거래 복사
             for tx in self.load():
-                dest.write(
-                    json.dumps(asdict(tx), ensure_ascii=False) + "\n"
-                )
+                write_jsonl(dest, asdict(tx))
 
             # 새 거래를 임시 파일에 추가
             for tx in transactions:
-                dest.write(
-                    json.dumps(asdict(tx), ensure_ascii=False) + "\n"
-                )
+                write_jsonl(dest, asdict(tx))
                 count += 1
 
         return count
@@ -126,6 +132,7 @@ class BudgetStore:
     def __init__(self, data_dir: str = "data"):
         self.path = Path(data_dir) / "budgets.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.touch(exist_ok=True)
 
     def set(self, month: str, amount: int) -> None:     #해당 월 예산 저장 또는 변경
         with atomic_write(self.path) as dest:
@@ -134,10 +141,24 @@ class BudgetStore:
                     write_jsonl(dest, data)
             write_jsonl(dest, {"month": month, "amount": amount})
 
-    def get(self, month: str) -> int | None:        #해당 월의 예산 조회
+    def get(self, month: str) -> int | None:
         for data in read_jsonl(self.path):
+            if "month" not in data or "amount" not in data:
+                raise ValueError(
+                    f"{self.path}: 예산의 month 또는 amount가 없습니다."
+                )
+
             if data["month"] == month:
-                return data["amount"]
+                amount = data["amount"]
+
+                if type(amount) is not int or amount <= 0:
+                    raise ValueError(
+                        f"{self.path}: 예산 금액은 양수 정수여야 합니다. "
+                        "저장 파일을 확인하세요."
+                    )
+
+                return amount
+
         return None
 
 class CategoryStore:
@@ -153,6 +174,12 @@ class CategoryStore:
 
     def load(self) -> Generator[str]:
         for data in read_jsonl(self.path):
+            if "name" not in data:
+                raise ValueError(
+                    f"{self.path}: 카테고리 이름(name)이 없습니다. "
+                    "저장 파일을 확인하세요."
+                )
+
             yield data["name"]
 
     def add(self, name: str) -> bool:

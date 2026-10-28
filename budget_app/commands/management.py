@@ -13,8 +13,7 @@ def handle_budget(args: Namespace) -> int:
         validate_month(args.month)
 
         if args.amount <= 0:
-            print("[오류] 예산은 0보다 커야 합니다.")
-            return 1
+            raise ValueError("예산은 0보다 커야 합니다.")
 
         store = BudgetStore(args.data_dir)
         store.set(args.month, args.amount)
@@ -33,8 +32,7 @@ def handle_category(args: Namespace) -> int:
         if store.add(name):
             print(f"[저장 완료] category={name}")
         else:
-            print("[오류] 비어 있거나 이미 존재하는 카테고리입니다.")
-            return 1
+            raise ValueError("비어 있거나 이미 존재하는 카테고리입니다.")
 
     elif args.category_command == "list":
         for name in store.load():
@@ -46,13 +44,11 @@ def handle_category(args: Namespace) -> int:
         repo = TransactionRepository(args.data_dir)
 
         if any(tx.category == name for tx in repo.load()):
-            print("[오류] 사용 중인 카테고리는 삭제할 수 없습니다.")
-            return 1
+            raise ValueError("사용 중인 카테고리는 삭제할 수 없습니다.")
 
         if store.remove(name):
             print(f"[삭제 완료] category={name}")
         else:
-            print("[오류] 존재하지 않는 카테고리입니다.")
-            return 1
+            raise ValueError("존재하지 않는 카테고리입니다.")
 
     return 0

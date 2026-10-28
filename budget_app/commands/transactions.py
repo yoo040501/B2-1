@@ -15,21 +15,16 @@ def handle_add(args: Namespace) -> int:
     category_store = CategoryStore(args.data_dir)
 
     if category not in set(category_store.load()):
-        print("[오류] 등록되지 않은 카테고리입니다.")
-        print("[힌트] category add 명령어로 먼저 등록하세요.")
-        return 1
+        raise ValueError(
+            "등록되지 않은 카테고리입니다. "
+            "category add 명령어로 먼저 등록하세요."
+        )
 
-    try:
-        validate_date(tx_date)
-        validate_type(tx_type)
+    validate_date(tx_date)
+    validate_type(tx_type)
 
-        amount = int(input("금액: "))
-        validate_amount(amount)
-
-    except ValueError as e:
-        print(f"[오류] {e}")
-        print("[힌트] 날짜, 타입, 금액을 확인하세요.")
-        return 1
+    amount = int(input("금액: "))
+    validate_amount(amount)
 
     memo = input("메모(선택): ")
     tags = [
@@ -59,8 +54,7 @@ def handle_list(args: Namespace) -> int:
     repo = TransactionRepository(args.data_dir)
 
     if args.limit <= 0:
-        print("[오류] --limit은 1 이상이어야 합니다.")
-        return 1
+        raise ValueError("--limit은 1 이상이어야 합니다.")
 
     transactions = nlargest(
         args.limit,
@@ -79,8 +73,7 @@ def handle_delete(args: Namespace) -> int:
     if repo.delete(args.id):
         print(f"[삭제 완료] id={args.id}")
     else:
-        print(f"[오류] 존재하지 않는 거래입니다. id={args.id}")
-        return 1
+        raise ValueError(f"존재하지 않는 거래입니다. id={args.id}")
 
     return 0
 
@@ -98,8 +91,10 @@ def handle_update(args: Namespace) -> int:
 
     if args.category is not None:
         if args.category not in set(CategoryStore(args.data_dir).load()):
-            print("[오류] 등록되지 않은 카테고리입니다.")
-            return 1
+            raise ValueError(
+                "등록되지 않은 카테고리입니다. "
+                "category add 명령어로 먼저 등록하세요."
+            )
 
         changes["category"] = args.category
 
@@ -118,13 +113,11 @@ def handle_update(args: Namespace) -> int:
         ]
 
     if not changes:
-        print("[오류] 수정할 항목이 없습니다.")
-        return 1
+        raise ValueError("수정할 항목이 없습니다.")
 
     if repo.update(args.id, changes):
         print(f"[수정 완료] id={args.id}")
     else:
-        print(f"[오류] 존재하지 않는 거래입니다. id={args.id}")
-        return 1
+        raise ValueError(f"존재하지 않는 거래입니다. id={args.id}")
 
     return 0

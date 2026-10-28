@@ -1,6 +1,3 @@
-import argparse
-from datetime import date as dt_date
-
 from .commands.transactions import (
     handle_add,
     handle_list,
@@ -12,7 +9,7 @@ from .commands.management import handle_budget, handle_category
 from .decorators import handle_errors
 from .commands.csv_commands import handle_import, handle_export
 from .service import restore_categories
-from .repository import TransactionRepository, CategoryStore
+from .repository import TransactionRepository, CategoryStore, BudgetStore
 from .parser import create_parser
 
 @handle_errors
@@ -21,6 +18,7 @@ def main() -> int:
     args = parser.parse_args()
     repo = TransactionRepository(args.data_dir)
     category_store = CategoryStore(args.data_dir)
+    BudgetStore(args.data_dir)
 
     restored = restore_categories(repo, category_store)
 

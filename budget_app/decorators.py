@@ -51,6 +51,7 @@ def handle_errors(func):
 
         except (KeyboardInterrupt, EOFError):
             print("\n[오류] 입력이 중단되었습니다.", file=sys.stderr)
+            print("[힌트] 명령을 다시 실행해 입력을 완료하세요.", file=sys.stderr)
             return 130
 
         return 1

@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 from tempfile import TemporaryDirectory
 
 from budget_app.models import Transaction
@@ -9,6 +10,7 @@ class TestTransactionRepository(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
         self.repo = TransactionRepository(self.temp_dir.name)
 
         self.tx = Transaction(
@@ -19,19 +21,19 @@ class TestTransactionRepository(unittest.TestCase):
             amount=15000
         )
 
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
     def test_save_and_load(self):
         self.repo.save(self.tx)
 
-        transactions = list(self.repo.load())
+        reopened = TransactionRepository(self.temp_dir.name)
+        transactions = list(reopened.load())
 
         self.assertEqual(len(transactions), 1)
-        self.assertEqual(transactions[0].amount, 15000)
+        self.assertEqual(transactions[0], self.tx)
 
     def test_update(self):
         self.repo.save(self.tx)
+        other = replace(self.tx, id="TX-002", amount=3000)
+        self.repo.save(other)
 
         result = self.repo.update(
             "TX-001",
@@ -39,53 +41,55 @@ class TestTransactionRepository(unittest.TestCase):
         )
 
         self.assertTrue(result)
-        self.assertEqual(
-            list(self.repo.load())[0].amount,
-            20000
-        )
+        self.assertEqual(list(self.repo.load()), [replace(self.tx, amount=20000), other])
 
     def test_delete(self):
         self.repo.save(self.tx)
+        other = replace(self.tx, id="TX-002")
+        self.repo.save(other)
 
         result = self.repo.delete("TX-001")
 
         self.assertTrue(result)
-        self.assertEqual(len(list(self.repo.load())), 0)
+        self.assertEqual(list(self.repo.load()), [other])
 
     def test_duplicate_id(self):
         self.repo.save(self.tx)
 
         with self.assertRaises(ValueError):
             self.repo.save(self.tx)
+        self.assertEqual(list(self.repo.load()), [self.tx])
 
     def test_delete_nonexistent(self):
+        self.repo.save(self.tx)
+        original = self.repo.path.read_bytes()
         result = self.repo.delete("TX-999")
 
         self.assertFalse(result)
+        self.assertEqual(self.repo.path.read_bytes(), original)
 
-def test_save_many_atomic_rollback(self):
-    # 기존 거래 저장
-    self.repo.save(self.tx)
+    def test_update_nonexistent(self):
+        self.repo.save(self.tx)
+        original = self.repo.path.read_bytes()
+        self.assertFalse(self.repo.update("TX-999", {"amount": 20000}))
+        self.assertEqual(self.repo.path.read_bytes(), original)
 
-    # 첫 번째 거래를 전달한 다음 오류 발생
-    def faulty_transactions():
-        yield Transaction(
-            id="TX-002",
-            date="2026-10-27",
-            type="expense",
-            category="food",
-            amount=20000
-        )
+    def test_next_id_uses_maximum_not_file_order(self):
+        self.assertEqual(self.repo.next_id(), "TX-001")
+        self.repo.save(replace(self.tx, id="TX-010"))
+        self.repo.save(self.tx)
+        self.assertEqual(self.repo.next_id(), "TX-011")
 
-        raise RuntimeError("의도적인 저장 오류")
+    def test_save_many_atomic_rollback(self):
+        self.repo.save(self.tx)
+        original = self.repo.path.read_bytes()
 
-    # 오류 발생 확인
-    with self.assertRaises(RuntimeError):
-        self.repo.save_many_atomic(faulty_transactions())
+        def faulty_transactions():
+            yield replace(self.tx, id="TX-002", amount=20000)
+            raise RuntimeError("의도적인 저장 오류")
 
-    # 기존 거래는 그대로, 새 거래는 저장되지 않아야 함
-    transactions = list(self.repo.load())
+        with self.assertRaises(RuntimeError):
+            self.repo.save_many_atomic(faulty_transactions())
 
-    self.assertEqual(len(transactions), 1)
-    self.assertEqual(transactions[0].id, "TX-001")
-    self.assertEqual(transactions[0].amount, 15000)
+        self.assertEqual(self.repo.path.read_bytes(), original)
+        self.assertEqual(list(self.repo.path.parent.glob(".*.tmp")), [])

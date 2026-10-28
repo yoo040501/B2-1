@@ -3,7 +3,7 @@ from heapq import nlargest
 
 from ..repository import TransactionRepository, BudgetStore
 from ..service import search_transactions, summarize_month
-from ..validators import validate_date_range, validate_month
+from ..validators import validate_date_range, validate_month, validate_type
 from ..decorators import time_action
 
 @time_action
@@ -11,8 +11,10 @@ def handle_search(args: Namespace) -> int:
     validate_date_range(args.date_from, args.date_to)
 
     if args.limit <= 0:
-        print("[오류] --limit은 1 이상이어야 합니다.")
-        return 1
+        raise ValueError("--limit은 1 이상이어야 합니다.")
+
+    if args.tx_type is not None:
+        validate_type(args.tx_type)
 
     repo = TransactionRepository(args.data_dir)
 
@@ -43,8 +45,7 @@ def handle_summary(args: Namespace) -> int:
     validate_month(args.month)
 
     if args.top <= 0:
-        print("[오류] --top은 1 이상이어야 합니다.")
-        return 1
+        raise ValueError("--top은 1 이상이어야 합니다.")
 
     repo = TransactionRepository(args.data_dir)
 
