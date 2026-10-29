@@ -11,6 +11,21 @@ from .models import Transaction
 from .decorators import log_action
 
 
+def append_jsonl(path: Path, data: dict[str, Any]) -> None:
+    record = (json.dumps(data, ensure_ascii=False) + "\n").encode("utf-8") #문자열을 바이트로 변환
+
+    with path.open("a+b") as dest: #추가 저장하면서 읽기도 가능한 바이너리 모드로 열기
+        dest.seek(0, os.SEEK_END)
+        prefix = b""
+
+        if dest.tell() > 0:  # 빈 파일이 아니면
+            dest.seek(-1, os.SEEK_END)
+
+            if dest.read(1) != b"\n":
+                prefix = b"\n"
+
+        dest.write(prefix + record)
+
 def read_jsonl(path: Path) -> Generator[dict[str, Any]]:
     if not path.exists():
         return
@@ -29,6 +44,8 @@ def write_jsonl(dest: TextIO, data: dict[str, Any]) -> None:
     dest.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 
+
+#Atomic write란? 데이터가 영구 저장소에 완전히 기록되거나 전혀 기록되지 않도록 보장하는 쓰기 작업의 원자성을 의미
 @contextmanager #with 문에서 사용할 수 있는 함수 형태의 컨텍스트 매니저를 만드는 데코레이터
 def atomic_write(path: Path) -> Generator[TextIO]:
     temp_path: Path | None = None
@@ -64,8 +81,7 @@ class TransactionRepository:
         if any(existing.id == tx.id for existing in self.load()):
             raise ValueError(f"이미 존재하는 거래 ID입니다: {tx.id}")
             
-        with self.path.open("a", encoding="utf-8") as dest:
-            write_jsonl(dest, asdict(tx))#asdict(): 객체를 딕셔너리로 변환
+        append_jsonl(self.path, asdict(tx))#asdict(): 객체를 딕셔너리로 변환
 
     def load(self) -> Generator[Transaction]:
         for data in read_jsonl(self.path):
@@ -187,8 +203,7 @@ class CategoryStore:
         if not name or name in self.load():
             return False
 
-        with self.path.open("a", encoding="utf-8") as dest:
-            write_jsonl(dest, {"name": name})
+        append_jsonl(self.path, {"name": name})
         return True
 
     def remove(self, name: str) -> bool:

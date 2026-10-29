@@ -16,15 +16,13 @@ from .parser import create_parser
 def main() -> int:
     parser = create_parser()
     args = parser.parse_args()
-    repo = TransactionRepository(args.data_dir)
-    category_store = CategoryStore(args.data_dir)
     BudgetStore(args.data_dir)
 
-    restored = restore_categories(repo, category_store)
-
-    if restored:
-        print(f"[자동 복구] 누락된 카테고리: {', '.join(restored)}")
-
+    # repo = TransactionRepository(args.data_dir)
+    # category_store = CategoryStore(args.data_dir)
+    # restored = restore_categories(repo, category_store)
+    # if restored:
+    #     print(f"[자동 복구] 누락된 카테고리: {', '.join(restored)}")
     handlers = {
             "add": handle_add,
             "list": handle_list,
