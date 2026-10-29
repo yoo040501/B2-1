@@ -1,5 +1,6 @@
 import json
 import os
+from itertools import chain
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
 from pathlib import Path
@@ -131,6 +132,13 @@ class TransactionRepository:
         return f"TX-{last_id + 1:03d}"
 
     def save_many_atomic(self, transactions: Generator[Transaction]) -> int:
+        iterator = iter(transactions)
+        first = next(iterator, None)
+
+        # 정상 거래가 없으면 파일을 재작성하지 않음
+        if first is None:
+            return 0
+
         count = 0
 
         with atomic_write(self.path) as dest:
@@ -138,8 +146,8 @@ class TransactionRepository:
             for tx in self.load():
                 write_jsonl(dest, asdict(tx))
 
-            # 새 거래를 임시 파일에 추가
-            for tx in transactions:
+            # 미리 꺼낸 첫 거래와 나머지 거래 저장
+            for tx in chain((first,), iterator):
                 write_jsonl(dest, asdict(tx))
                 count += 1
 
