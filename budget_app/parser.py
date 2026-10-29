@@ -1,5 +1,6 @@
 import argparse
 
+from .validators import parse_amount
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -52,7 +53,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     budget_set_parser.add_argument("--month", required=True)
-    budget_set_parser.add_argument("--amount", type=int, required=True)
+    budget_set_parser.add_argument("--amount", type=amount_argument, required=True)
 
     category_parser = subparsers.add_parser(
         "category", help="카테고리 관리"
@@ -79,7 +80,7 @@ def create_parser() -> argparse.ArgumentParser:
     update_parser.add_argument("--date")
     update_parser.add_argument("--type", dest="tx_type")
     update_parser.add_argument("--category")
-    update_parser.add_argument("--amount", type=int)
+    update_parser.add_argument("--amount", type=amount_argument)
     update_parser.add_argument("--memo")
     update_parser.add_argument("--tags")
 
@@ -101,3 +102,9 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+def amount_argument(value: str) -> int:
+    try:
+        return parse_amount(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e)) from None

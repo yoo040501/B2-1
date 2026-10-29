@@ -5,15 +5,14 @@ from ..repository import (
     BudgetStore,
     CategoryStore
 )
-from ..validators import validate_month
+from ..validators import validate_month, validate_amount
 
 
 def handle_budget(args: Namespace) -> int:
     if args.budget_command == "set":
         validate_month(args.month)
 
-        if args.amount <= 0:
-            raise ValueError("예산은 0보다 커야 합니다.")
+        validate_amount(args.amount)
 
         store = BudgetStore(args.data_dir)
         store.set(args.month, args.amount)

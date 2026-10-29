@@ -3,7 +3,7 @@ from argparse import Namespace
 
 from ..models import Transaction
 from ..repository import TransactionRepository, CategoryStore
-from ..validators import validate_date, validate_type, validate_amount, validate_category, parse_tags
+from ..validators import validate_date, validate_type, validate_amount, validate_category, parse_tags, parse_amount
 from ..service import latest_transactions
 
 def handle_add(args: Namespace) -> int:
@@ -18,8 +18,7 @@ def handle_add(args: Namespace) -> int:
 
     validate_category(category, set(category_store.load()))
 
-    amount = int(input("금액: "))
-    validate_amount(amount)
+    amount = parse_amount(input("금액: "))
 
     memo = input("메모(선택): ")
     tags = parse_tags(input("태그(쉼표 구분): "))

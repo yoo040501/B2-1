@@ -2,7 +2,7 @@ import csv
 import sys
 from pathlib import Path
 
-from .validators import validate_date, validate_type, validate_amount, validate_category, parse_tags
+from .validators import validate_date, validate_type, validate_category, parse_tags, parse_amount
 from .repository import TransactionRepository, atomic_write
 from .models import Transaction
 
@@ -94,22 +94,22 @@ def import_transactions(
         def valid_transactions():
             nonlocal skipped, next_number
 
-            for record_no, row in enumerate(reader, start=1):
+            for row in reader:
                 try:
                     tx_date = (row["date"] or "").strip()
-                    tx_type = (row["type"] or "").strip()
-                    category = (row["category"] or "").strip()
-                    amount = int(row["amount"])
-
                     validate_date(tx_date)
+
+                    tx_type = (row["type"] or "").strip()
                     validate_type(tx_type)
-                    validate_amount(amount)
                     
+                    category = (row["category"] or "").strip()
                     validate_category(category, categories)
+
+                    amount = parse_amount(row["amount"])
+                    
                     if None in row:
                         raise ValueError("열 개수가 헤더보다 많습니다.")
                     memo = row.get("memo") or ""
-                    tag_text = row.get("tags") or ""
 
                     tags = parse_tags(row.get("tags") or "")
 
@@ -126,7 +126,7 @@ def import_transactions(
                 except (ValueError, TypeError, AttributeError) as e:
                     skipped += 1
                     print(
-                        f"[건너뜀] 레코드 {record_no + 1}: {e}",
+                        f"[건너뜀] 레코드 {reader.line_num}: {e}",
                         file=sys.stderr,
                     )
                     continue

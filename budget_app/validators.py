@@ -69,3 +69,17 @@ def parse_tags(text: str) -> list[str]:
         for tag in text.split(",")
         if tag.strip()
     ]
+
+def parse_amount(value: str | None) -> int:
+    if value is None:
+        raise ValueError("금액이 누락되었습니다.")
+
+    try:
+        amount = int(value)
+    except ValueError:
+        raise ValueError(
+            "금액은 쉼표 없는 정수로 입력하세요. 예: 1000"
+        ) from None
+
+    validate_amount(amount)
+    return amount

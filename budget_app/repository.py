@@ -74,7 +74,8 @@ class TransactionRepository:
     def __init__(self, data_dir: str = "data"):
         self.path = Path(data_dir) / "transactions.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.touch(exist_ok=True)
+        if not self.path.exists():
+            self.path.touch()
 
     @log_action
     def save(self, tx: Transaction) -> None:
@@ -148,7 +149,8 @@ class BudgetStore:
     def __init__(self, data_dir: str = "data"):
         self.path = Path(data_dir) / "budgets.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.touch(exist_ok=True)
+        if not self.path.exists():
+            self.path.touch()
 
     def set(self, month: str, amount: int) -> None:     #해당 월 예산 저장 또는 변경
         with atomic_write(self.path) as dest:
