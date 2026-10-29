@@ -9,7 +9,10 @@ from ..validators import validate_date, validate_type, validate_amount
 
 def handle_add(args: Namespace) -> int:
     tx_date = input("날짜(YYYY-MM-DD, 엔터 시 오늘): ").strip() or date.today().isoformat()
+    validate_date(tx_date)
     tx_type = input("타입(income/expense): ").strip()
+    validate_type(tx_type)
+
     category = input("카테고리: ").strip()
 
     category_store = CategoryStore(args.data_dir)
@@ -19,9 +22,6 @@ def handle_add(args: Namespace) -> int:
             "등록되지 않은 카테고리입니다. "
             "category add 명령어로 먼저 등록하세요."
         )
-
-    validate_date(tx_date)
-    validate_type(tx_type)
 
     amount = int(input("금액: "))
     validate_amount(amount)
@@ -62,9 +62,13 @@ def handle_list(args: Namespace) -> int:
         key=lambda item: (item[1].date, item[0])
     )
 
-    for _, tx in transactions:
-        print(tx)
+    if not transactions:
+        print("등록된 거래가 없습니다.")
+    else:
+        for _, tx in transactions:
+            print(tx)
 
+    
     return 0
 
 def handle_delete(args: Namespace) -> int:

@@ -78,6 +78,11 @@ def import_transactions(
     with open(csv_file, "r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f, strict=True) #CSV 파일을 한 줄씩 읽어서 딕셔너리로 변환
 
+        fields = reader.fieldnames or []
+
+        if len(fields) != len(set(fields)):
+            raise ValueError("CSV 헤더에 중복된 이름이 있습니다.")
+        
         required = {"date", "type", "category", "amount"}
 
         if not required.issubset(reader.fieldnames or []): #CSV 헤더에 필수 컬럼이 모두 있는지 확인하는 코드
@@ -101,7 +106,8 @@ def import_transactions(
                     
                     if category not in categories:
                         raise ValueError("등록되지 않은 카테고리")
-
+                    if None in row:
+                        raise ValueError("열 개수가 헤더보다 많습니다.")
                     memo = row.get("memo") or ""
                     tag_text = row.get("tags") or ""
 
