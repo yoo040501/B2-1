@@ -92,7 +92,7 @@ print(list(numbers()))
 
 ### 실제 코드: JSONL을 한 줄씩 읽기
 
-[repository.py](../budget_app/repository.py)의 `read_jsonl()`은 파일 전체를 한 번에 읽지 않고, 한 줄씩 JSON 객체로 변환해 `yield`합니다.
+[repository.py](/budget_app/repository.py)의 `read_jsonl()`은 파일 전체를 한 번에 읽지 않고, 한 줄씩 JSON 객체로 변환해 `yield`합니다.
 
 다음 예시는 실제 함수를 사용합니다. 임시 폴더만 사용하므로 기본 `data/`는 바뀌지 않습니다.
 
@@ -143,7 +143,7 @@ records = read_jsonl(path)`에서는 아직 파일을 읽지 않습니다. `for`
 
 ### 실제 코드: 최신 거래를 고르는 동안 메모리 사용 줄이기
 
-다음은 [service.py](../budget_app/service.py)의 `latest_transactions()`를 사용하는 예시입니다.
+다음은 [service.py](/budget_app/service.py)의 `latest_transactions()`를 사용하는 예시입니다.
 
 ```python
 from budget_app.models import Transaction
@@ -191,7 +191,7 @@ print([tx.id for tx in selected])
 
 거래 저장·수정·삭제 전에 로그를 남기려면 각 함수에 비슷한 `print()`를 작성할 수 있습니다. 데코레이터는 이런 공통 작업을 한 곳으로 분리하고 필요한 함수에 적용하는 방법입니다.
 
-[decorators.py](../budget_app/decorators.py)의 `log_action`을 반환 부분만 간단히 정리하면 다음 구조입니다.
+[decorators.py](/budget_app/decorators.py)의 `log_action`을 반환 부분만 간단히 정리하면 다음 구조입니다.
 
 ```python
 import sys
@@ -330,7 +330,7 @@ stderr:
 
 데코레이터가 오류를 처리해도 함수의 중단된 위치부터 다시 실행하는 것은 아닙니다. 잘못된 입력을 자동으로 다시 받는 기능도 아닙니다.
 
-현재 프로젝트에서는 `@handle_errors`를 `main()`에 적용하고, [__main__.py](../budget_app/__main__.py)의 `raise SystemExit(main())`이 반환값을 실제 프로세스 종료 코드로 전달합니다. 위 학습 예시는 반환값만 출력하므로 예시 Python 프로세스 자체를 종료 코드 1로 끝내지는 않습니다.
+현재 프로젝트에서는 `@handle_errors`를 `main()`에 적용하고, [__main__.py](/budget_app/__main__.py)의 `raise SystemExit(main())`이 반환값을 실제 프로세스 종료 코드로 전달합니다. 위 학습 예시는 반환값만 출력하므로 예시 Python 프로세스 자체를 종료 코드 1로 끝내지는 않습니다.
 
 stderr는 메시지의 출력 위치입니다. stderr로 출력한다는 사실만으로 실패 코드가 되는 것은 아닙니다. 또한 현재 데코레이터는 지정한 예외를 처리하며 모든 종류의 예외를 무조건 숨기지는 않습니다.
 
@@ -344,7 +344,7 @@ stderr는 메시지의 출력 위치입니다. stderr로 출력한다는 사실�
 
 ### atomic_write(): yield와 contextmanager의 결합
 
-[repository.py](../budget_app/repository.py)의 `atomic_write()`는 `yield`를 사용하면서 `@contextmanager`가 적용되어 있습니다. 이 데코레이터는 제너레이터를 `with`문에서 사용할 수 있도록 바꿉니다.
+[repository.py](/budget_app/repository.py)의 `atomic_write()`는 `yield`를 사용하면서 `@contextmanager`가 적용되어 있습니다. 이 데코레이터는 제너레이터를 `with`문에서 사용할 수 있도록 바꿉니다.
 
 먼저 파일 처리 없이 실행 순서만 확인해 볼 수 있습니다.
 
