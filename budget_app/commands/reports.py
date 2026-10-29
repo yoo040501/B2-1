@@ -1,8 +1,7 @@
 from argparse import Namespace
-from heapq import nlargest
 
 from ..repository import TransactionRepository, BudgetStore
-from ..service import search_transactions, summarize_month
+from ..service import search_transactions, summarize_month, latest_transactions
 from ..validators import validate_date_range, validate_month, validate_type
 from ..decorators import time_action
 
@@ -18,24 +17,22 @@ def handle_search(args: Namespace) -> int:
 
     repo = TransactionRepository(args.data_dir)
 
-    results = nlargest(
-        args.limit,
-        enumerate(search_transactions(
+    results = latest_transactions(
+        search_transactions(
             repo,
             date_from=args.date_from,
             date_to=args.date_to,
             category=args.category,
             tx_type=args.tx_type,
             q=args.q,
-            tag=args.tag
-        )),
-        key=lambda item: (item[1].date, item[0])
+            tag=args.tag,
+        ),
+        args.limit,
     )
-
     if not results:
         print("검색 결과가 없습니다.")
 
-    for _, tx in results:
+    for tx in results:
         print(tx)
 
     return 0

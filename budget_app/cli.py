@@ -8,7 +8,7 @@ from .commands.reports import handle_search, handle_summary
 from .commands.management import handle_budget, handle_category
 from .decorators import handle_errors
 from .commands.csv_commands import handle_import, handle_export
-from .service import restore_categories
+# from .service import restore_categories
 from .repository import TransactionRepository, CategoryStore, BudgetStore
 from .parser import create_parser
 

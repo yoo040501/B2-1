@@ -1,4 +1,5 @@
 from datetime import date
+from collections.abc import Collection
 import re
 
 def validate_date_range(
@@ -50,3 +51,21 @@ def validate_type(value: str) -> None:
 def validate_amount(value: int) -> None:
     if value <= 0:
         raise ValueError("금액은 0보다 커야 합니다.")
+
+def validate_category(
+    category: str,
+    categories: Collection[str],
+) -> None:
+    if category not in categories:
+        raise ValueError(
+            "등록되지 않은 카테고리입니다. "
+            "category add 명령어로 먼저 등록하세요."
+        )
+
+
+def parse_tags(text: str) -> list[str]:
+    return [
+        tag.strip()
+        for tag in text.split(",")
+        if tag.strip()
+    ]

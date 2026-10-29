@@ -1,11 +1,10 @@
 from datetime import date
 from argparse import Namespace
-from heapq import nlargest
 
 from ..models import Transaction
 from ..repository import TransactionRepository, CategoryStore
-from ..validators import validate_date, validate_type, validate_amount
-
+from ..validators import validate_date, validate_type, validate_amount, validate_category, parse_tags
+from ..service import latest_transactions
 
 def handle_add(args: Namespace) -> int:
     tx_date = input("날짜(YYYY-MM-DD, 엔터 시 오늘): ").strip() or date.today().isoformat()
@@ -17,21 +16,13 @@ def handle_add(args: Namespace) -> int:
 
     category_store = CategoryStore(args.data_dir)
 
-    if category not in set(category_store.load()):
-        raise ValueError(
-            "등록되지 않은 카테고리입니다. "
-            "category add 명령어로 먼저 등록하세요."
-        )
+    validate_category(category, set(category_store.load()))
 
     amount = int(input("금액: "))
     validate_amount(amount)
 
     memo = input("메모(선택): ")
-    tags = [
-        tag.strip()
-        for tag in input("태그(쉼표 구분): ").split(",")
-        if tag.strip()
-    ]
+    tags = parse_tags(input("태그(쉼표 구분): "))
 
     repo = TransactionRepository(args.data_dir)
 
@@ -56,16 +47,12 @@ def handle_list(args: Namespace) -> int:
     if args.limit <= 0:
         raise ValueError("--limit은 1 이상이어야 합니다.")
 
-    transactions = nlargest(
-        args.limit,
-        enumerate(repo.load()),
-        key=lambda item: (item[1].date, item[0])
-    )
+    transactions = latest_transactions(repo.load(), args.limit)
 
     if not transactions:
         print("등록된 거래가 없습니다.")
     else:
-        for _, tx in transactions:
+        for tx in transactions:
             print(tx)
 
     
@@ -94,12 +81,10 @@ def handle_update(args: Namespace) -> int:
         changes["type"] = args.tx_type
 
     if args.category is not None:
-        if args.category not in set(CategoryStore(args.data_dir).load()):
-            raise ValueError(
-                "등록되지 않은 카테고리입니다. "
-                "category add 명령어로 먼저 등록하세요."
-            )
-
+        validate_category(
+            args.category,
+            set(CategoryStore(args.data_dir).load()),
+        )
         changes["category"] = args.category
 
     if args.amount is not None:
@@ -110,12 +95,7 @@ def handle_update(args: Namespace) -> int:
         changes["memo"] = args.memo
 
     if args.tags is not None:
-        changes["tags"] = [
-            tag.strip()
-            for tag in args.tags.split(",")
-            if tag.strip()
-        ]
-
+        changes["tags"] = parse_tags(args.tags)
     if not changes:
         raise ValueError("수정할 항목이 없습니다.")
 

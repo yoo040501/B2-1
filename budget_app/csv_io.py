@@ -1,7 +1,8 @@
 import csv
+import sys
 from pathlib import Path
 
-from .validators import validate_date, validate_type, validate_amount
+from .validators import validate_date, validate_type, validate_amount, validate_category, parse_tags
 from .repository import TransactionRepository, atomic_write
 from .models import Transaction
 
@@ -93,7 +94,7 @@ def import_transactions(
         def valid_transactions():
             nonlocal skipped, next_number
 
-            for row in reader:
+            for record_no, row in enumerate(reader, start=1):
                 try:
                     tx_date = (row["date"] or "").strip()
                     tx_type = (row["type"] or "").strip()
@@ -104,18 +105,13 @@ def import_transactions(
                     validate_type(tx_type)
                     validate_amount(amount)
                     
-                    if category not in categories:
-                        raise ValueError("등록되지 않은 카테고리")
+                    validate_category(category, categories)
                     if None in row:
                         raise ValueError("열 개수가 헤더보다 많습니다.")
                     memo = row.get("memo") or ""
                     tag_text = row.get("tags") or ""
 
-                    tags = [
-                        tag.strip()
-                        for tag in tag_text.split(",")
-                        if tag.strip()
-                    ]
+                    tags = parse_tags(row.get("tags") or "")
 
                     tx = Transaction(
                         id=f"TX-{next_number:03d}",
@@ -127,8 +123,12 @@ def import_transactions(
                         tags=tags
                     )
 
-                except (ValueError, TypeError, AttributeError):
+                except (ValueError, TypeError, AttributeError) as e:
                     skipped += 1
+                    print(
+                        f"[건너뜀] 레코드 {record_no + 1}: {e}",
+                        file=sys.stderr,
+                    )
                     continue
 
                 next_number += 1

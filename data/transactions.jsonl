@@ -6,3 +6,8 @@
 {"id": "TX-003", "date": "2026-10-27", "type": "expense", "category": "food", "amount": 45235, "memo": "", "tags": []}
 {"id": "TX-004", "date": "2026-10-27", "type": "income", "category": "food", "amount": 30000, "memo": "", "tags": []}
 {"id": "TX-005", "date": "2026-10-27", "type": "income", "category": "food", "amount": 123, "memo": "", "tags": []}
+{"id": "TX-006", "date": "2026-10-29", "type": "expense", "category": "food", "amount": 1000, "memo": "정상 행", "tags": ["meal", "friend"]}
+{"id": "TX-007", "date": "2026-10-29", "type": "expense", "category": "food", "amount": 1000, "memo": "정상 행", "tags": ["meal", "friend"]}
+{"id": "TX-008", "date": "2026-10-29", "type": "expense", "category": "food", "amount": 1000, "memo": "정상 행", "tags": ["meal", "friend"]}
+{"id": "TX-009", "date": "2026-10-29", "type": "expense", "category": "food", "amount": 1000, "memo": "정상 행", "tags": ["meal", "friend"]}
+{"id": "TX-010", "date": "2026-10-29", "type": "expense", "category": "food", "amount": 1000, "memo": "정상 행", "tags": ["meal", "friend"]}
